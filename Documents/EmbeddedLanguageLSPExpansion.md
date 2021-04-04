@@ -172,7 +172,7 @@ As you can imagine these virtual text documents drive nearly every embedded lang
 
 ### Manging Virtual Text Document State
 
-Virtual document state (i.e. what content should the JavaScript hidden document have in an HTML scenario) is managed via `workspace/applyEdit` requests from server -> client. Ultimately it enables a server to create, edit or delete a virtual text document when it sees fit.
+Virtual document state (i.e. what content should the JavaScript hidden document have in an HTML scenario) is managed via `textDocument/open`, `textDocument/close` and `workspace/applyEdit` requests from server -> client. Ultimately it enables a server to open, edit or close a virtual text document when it sees fit.
 
 - [Example](#documentStateExample)
 - [Spec](#spec_VirtualTextDocumentStateManagement)
@@ -214,13 +214,13 @@ By standardizing what it means for embedded languages to create virtual text doc
 
 When the host language (i.e. HTML, Razor etc.) changes it can "update" its corresponding embedded language representations via `workspace/applyEdit` requests from server -> client. This path enables all embedded document state management to transfer across platforms, be visible to extensions and most of all be standardized.
 
-- Opening is done via `CreateFile` workspace edits with a `virtual` property set to `true`. [Spec](#spec_creatingVirtualTextDocuments)
+- Opening is done via a `textDocument/open` requests. [Spec](#spec_openingVirtualTextDocuments)
 - Changing is done via normal workspace edits with document changes. [Spec](#spec_changingVirtualTextDocuments)
-- Closing is done via `DeleteFile` workspace edits. [Spec](#spec_deletingVirtualTextDocuments)
+- Closing is done via `textDocument/close` requests. [Spec](#spec_closingVirtualTextDocuments)
 
 Here's an example in Razor (C# / HTML are sub-languages) where a user opens a file, types an `@` and then closes the file (`@` transitions into C#). It represents what happens for the C# embedded language (excludes the HTML  embedded language for simplicity).
 
-![image](https://user-images.githubusercontent.com/2008729/111101829-eea52e00-8507-11eb-8559-ae799492f42d.png)
+![image](https://user-images.githubusercontent.com/2008729/113519756-2b7ea680-9543-11eb-841b-ab4c48d88f6a.png)
 
 **Important:** For all the details on virtual document state management check out the [full spec](#spec_VirtualTextDocumentStateManagement) below. 
 
@@ -232,6 +232,8 @@ Here's an example of a user in an open Razor document typing `@` to get C# compe
 
 ![image](https://user-images.githubusercontent.com/2008729/111101913-1bf1dc00-8508-11eb-8350-ca3c4a03ba42.png)
 
+*Note: the embedded-csharp:/ scheme was left out for simplicity*
+
 **Important:** For all the details on virtual document language features check out the [full spec](#spec_LanguageFeatures) below. 
 
 ## <a href="#diagnosticsExample" name="diagnosticsExample" class="anchor">Diagnostics Example</a>
@@ -241,6 +243,8 @@ A host language server can provide embedded language diagnostics by delegating t
 Here's an example of a user in an open Razor document having just typed the `@` character (invalid on its own in Razor). Typically this produces two diagnostisc, one from Razor saying you need content after the `@` and one from C# about missing C# content; however, in the example below only one is returned because Razor filters out the C# diagnostic in favor of the Razor one:
 
 ![image](https://user-images.githubusercontent.com/2008729/111101991-46dc3000-8508-11eb-8cbc-9e7d9c7bbc5b.png)
+
+*Note: the embedded-csharp:/ scheme was left out for simplicity*
 
 **Important:** For all the details on virtual document diagnostics check out the [full spec](#spec_Diagnostics) below. 
 
@@ -356,75 +360,80 @@ The interesting result of this would modify Company.razor to be:
 
 ## <a href="#spec_VirtualTextDocumentStateManagement" name="spec_VirtualTextDocumentStateManagement" class="anchor">Virtual Text Document State Management</a>
 
-Virtual document state is managed via `workspace/applyEdit` requests. The `VirtualTextDocumentClientCapabilities` define client capabilities the editor provides in relation to managing virtual text document state.
+Virtual document state is managed via a combination of `textDocument/open`, `textDocument/close` and `workspace/applyEdit` requests. The `TextDocumentClientCapabilities` define the text document client capabilities and with this spec expansion get expanded to support open/close requests to enable the management of virtual text document state.
 
-_Client Capability:_
+_Client Capabilities:_
 
-- property name (optional): `workspace.workspaceEdit.virtualTextDocument`
-- property type: `VirtualTextDocumentClientCapabilities` defined as follows:
+- Expanded property name: `textDocument`
 
 ```typescript
 /**
  * Client capabilities specific to virtual text documents
  */
-export interface VirtualTextDocumentClientCapabilities {
+export interface TextDocumentClientCapabilities {
+    // ... Existing TextDocumentClientCapabilities ... //
+
     /**
-     * Whether the client supports renaming virtual documents
+     * Capabilities specific to the server->client `textDocument/open` request.
      */
-    rename?: boolean;
+    open?: OpenTextDocumentClientCapabilities;
+
+    /**
+     * Capabilities specific to the server->client `textDocument/close` request.
+     */
+    close?: CloseTextDocumentClientCapabilities;
 }
 ```
 
-#### <a href="#spec_creatingVirtualTextDocuments" name="spec_creatingVirtualTextDocuments">Creating Virtual Text Documents</a>
+#### <a href="#spec_openingVirtualTextDocuments" name="spec_openingVirtualTextDocuments">Opening Virtual Text Documents</a>
 
 _Client Capability:_
-- property name (optional): `workspace.workspaceEdit.virtualTextDocument`
-- property type: `VirtualTextDocumentClientCapabilities`
+- property name (optional): `textDocument.open`
+- property type: `OpenTextDocumentClientCapabilities`
 
-Virtual documents are opened / created via a `workspace/applyEdit` request with a `CreateFile` document change that has `virtual` set to `true`:
+The `textDocument/open` request is sent from the server to the client. The server can use it to ask the client to open any text document even virtual text documents. Virtual text documents have a `embedded-<language>` URI scheme and their content should be determined by the client; however, typically content is provided via servers implementing the `FileSystem` LSP spec expansion.
 
-**Example:**
+Documents opened by `textDocument/open` are not visible to the user, they are only programatically open to issue <a href="#textDocument_didOpen">textDocument/didOpen</a> to all other applicable language servers.
+
+_Request_:
+* method: `textDocument/open`
+* params: `OpenTextDocumentParams` defined as follows:
+
 ```typescript
-{
-    documentChanges: {
-        [
-            {
-                kind: "create",
-                uri: "file:///some/path/that/doesnotexist.cs",
-                options: {
-                    overwrite: true,
-
-                    // This is the magic portion of the CreateFile object 
-                    // that indicates that the created file should be 
-                    // virtual
-                    virtual: true
-                }
-            }
-        ]
-    }
+interface OpenTextDocumentParams {
+	/**
+	 * The text document to open.
+     * 
+     * If opening a virtual text document the identifiers URI scheme should be of the form `embedded-<language>`
+	 */
+	textDocument: TextDocumentIdentifier;
 }
 ```
 
-Creating a virtual text document results in the client issueing a `textDocument/didOpen` to all other applicable language servers. That `textDocument/didOpen` request has its `DidOpenTextDocumentParams.virtual` property set to `true`.
+_Response_:
+* result: `OpenTextDocumentResponse` defined as follows:
 
-Virtual text documents have a few characteristics that set them apart from normal text documents:
+```typescript
+export interface OpenTextDocumentResponse {
+	/**
+	 * Indicates whether the text document could be opened or not.
+	 */
+	success: boolean;
 
-1. Viewed as normal documents to other language servers
-1. Never written to disk and shouldn't be shown in the file explorer.
-1. Can only be edited by the server that created them indirectly via workspace edits.
-1. Immediately trigger `textDocument/didOpen` requests upon creation
-1. Trigger `textDocument/didClose` requests when deleted
-1. If the server that created them disapears all virtual documents created from said server get deleted/closed
+	/**
+	 * An optional textual description for why the text document could 
+     * not be opened. This may be used by the server for diagnostic logging
+     * or to utilize another mechanism to show a suitable error to the user.
+	 */
+	failureReason?: string;
+}
+```
 
-Trying to create virtual text documents with `DocumentUri`s that already exist without `overwrite: true` will result in failure to apply workspace edits.
+Opening text documents results in the client issueing a `textDocument/didOpen` to all other applicable language servers.
 
 #### <a href="#spec_changingVirtualTextDocuments" name="spec_changingVirtualTextDocuments">Changing Virtual Text Documents</a>
 
-_Client Capability:_
-- property name (optional): `workspace.workspaceEdit.virtualTextDocument`
-- property type: `VirtualTextDocumentClientCapabilities`
-
-Virtual documents can be changed by the server that created them via a `workspace/applyEdit` request with a corresponding `changes` or `documentChanges`. This results in the client following standard `textDocument/didChange` handling which results in it notifying all appolicable language servers of the change.
+Virtual documents can be changed by the server that created them via a normal `workspace/applyEdit` request with a corresponding `changes` or `documentChanges`. This results in the client following standard `textDocument/didChange` handling which results in it notifying all appolicable language servers of the change.
 
 **Example:**
 ```typescript
@@ -449,35 +458,49 @@ Virtual documents can be changed by the server that created them via a `workspac
 }
 ```
 
-If the edit is provided via `documentChanges` the `version` property of the provided `textDocument` should not be provided. Edits to closed or unowned virtual text documents result in failure to apply workspace edits.
+Mutating virtual documents is no different than changing any other file. However, the client typically will not "show" the edited document since it's a virtual language document.
 
-Attempting to edit unowned or non-existent text documents results in failure to apply worskpace edits.
-
-#### <a href="#spec_deletingVirtualTextDocuments" name="spec_deletingVirtualTextDocuments">Deleting a Virtual Text Document</a>
+#### <a href="#spec_closingVirtualTextDocuments" name="spec_closingVirtualTextDocuments">Closing a Virtual Text Document</a>
 
 _Client Capability:_
-- property name (optional): `workspace.workspaceEdit.virtualTextDocument`
-- property type: `VirtualTextDocumentClientCapabilities`
+- property name (optional): `textDocument.close`
+- property type: `CloseTextDocumentClientCapabilities`
 
-Virtual documents are closed / deleted via  `workspace/applyEdit` request with a `DeleteFile` document change:
+The `textDocument/close` request is sent from the server to the client. The server can use it to ask the client to close any text document, including virtual text documents that are open.
 
-**Example:**
+Closing virtual text documents gets translated into <a href="#textDocument_didClose">textDocument/didClose</a>'s to all other applicable language servers.
+
+_Request_:
+* method: `textDocument/close`
+* params: `CloseTextDocumentParams` defined as follows:
+
 ```typescript
-{
-    documentChanges: {
-        [
-            {
-                kind: "delete",
-                uri: "file:///some/path/that/doesnotexist.cs"
-            }
-        ]
-    }
+interface CloseTextDocumentParams {
+	/**
+	 * The text document to close.
+	 */
+	textDocument: TextDocumentIdentifier;
 }
 ```
 
-Deleting virtual text documents gets translated into `textDocument/didClose` notification to all other applicable language servers.
+_Response_:
+* result: `CloseTextDocumentResponse` defined as follows:
 
-Deleting virtual text documents that are unopened or unowned result in failure to apply workspace edits.
+```typescript
+export interface CloseTextDocumentResponse {
+	/**
+	 * Indicates whether the text document could be closed or not.
+	 */
+	success: boolean;
+
+	/**
+	 * An optional textual description for why the text document could 
+     * not be closed. This may be used by the server for diagnostic logging
+     * or to utilize another mechanism to show a suitable error to the user.
+	 */
+	failureReason?: string;
+}
+```
 
 ## <a href="#spec_QueryingData" name="spec_QueryingData" class="anchor">Querying Document Data</a>
 
