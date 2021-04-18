@@ -39,7 +39,9 @@ The protocol currently supports several different file types and these represent
 
 ```typescript
 /**
- * Enumeration of file types.
+ * Enumeration of file types. The types `File` and `Directory` can also be
+ * a symbolic links, in that case use `FileType.File | FileType.SymbolicLink` and
+ * `FileType.Directory | FileType.SymbolicLink`.
  */
 export namespace FileType {
     /**
@@ -58,37 +60,17 @@ export namespace FileType {
     export const Directory = 2;
 
     /**
-     * A symbolic link to a file.
+     * A symbolic link to a file or folder
      */
-    export const SymbolicFile = 3;
-
-    /**
-     * A symbolic link to a directory.
-     */
-    export const SymbolicDirectory = 4;
+    export const Symbolic = 64;
 }
 ```
 
-#### <a href="#fileSystemError" name="fileSystemError" class="anchor">FileSystemError</a>
+#### <a href="#fileSystemErrorType" name="fileSystemErrorType" class="anchor">fileSystemErrorType</a>
 
-File system errors represent common interactions with a file system that may fail. For instance, trying to read a file that doesn't exist or edit a directory you don't have permissions to edit.
+File system error types represent common error codes used to indicate failed interactions with a file system. For instance, trying to read a file that doesn't exist or edit a directory you don't have permissions to edit.
 
 ```typescript
-/**
- * A type that file system providers should use to signal errors.
- */
-export interface FileSystemError {
-    /**
-     * Enumeration of common file system error types.
-     */
-    readonly type: FileSystemErrorType;
-
-    /**
-     * A message for the error. If `type` is `FileSystemErrorType.Other` then a message should be provided.
-     */
-    readonly message?: string;
-}
-
 export namespace FileSystemErrorType {
     /**
      * An error to signal that a file or folder wasn't found.
@@ -124,18 +106,6 @@ export namespace FileSystemErrorType {
      * A custom error.
      */
     export const Other = 1000;
-}
-```
-
-#### <a href="#fileSystemResult" name="fileSystemResult" class="anchor">FileSystemResult</a>
-
-Most mutations of a file system can either succeed or fail. The `FileSystemResult` structure indicates if an action had a successful result, and if not, why it went wrong.
-
-```typescript
-export interface FileSystemResult {
-    success: boolean;
-
-    error?: FileSystemError
 }
 ```
 
@@ -255,6 +225,81 @@ export namespace FileChangeType {
 }
 ```
 
+#### <a href="#watch" name="watch" class="anchor">Watch Request (:arrow_right_hook:)</a>
+
+Watch requests are sent from the client to the server to subscribe to [DidChangeFile](#didChangeFile) events in the file or folder denoted by `uri`.
+
+_Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
+
+_Server Capabilities:_ See general file system provider [server capabilities](#fileSystemProviderServerCapabilities)
+
+_Request:_
+- method: `fileSystem/watch`
+- params: `WatchParams` defined as follows:
+
+
+```typescript
+export interface WatchParams {
+    /**
+     * The uri of the file or folder to be watched.
+     */
+    uri: URI;
+
+    /**
+     * Configures the watch
+     */
+    options: WatchFileOptions
+}
+
+export interface WatchFileOptions {
+    /**
+     * If a folder should be recursively subscribed to
+     */
+    recursive: boolean;
+
+    /**
+     * Folders or files to exclude from being watched.
+     */
+    excludes: string[];
+}
+```
+
+_Response:_
+- result: `WatchResponse`
+
+```typescript
+export interface WatchResponse {
+    /**
+     * The subscription ID to be used in order to stop watching a file or folder via the [StopWatching](#stopWatching) notification.
+     */
+    subscriptionId: number;
+}
+```
+
+#### <a href="#stopWatching" name="stopWatching" class="anchor">StopWatching Notification (:arrow_right:)</a>
+
+A notification sent from client to server to unsubscribe from a watched file or folder.
+
+_Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
+
+_Server Capabilities:_ See general file system provider [server capabilities](#fileSystemProviderServerCapabilities)
+
+_Notification:_
+- method: `fileSystem/stopWatching`
+- params: `StopWatchingParams` defined as follows:
+
+```typescript
+/**
+ * A notification to signal an unsubscribe from a corresponding [watch](#watch) request.
+ */
+export interface StopWatchingParams {
+    /**
+     * The subscription id.
+     */
+    subscriptionId: number;
+}
+```
+
 #### <a href="#stat" name="stat" class="anchor">Stat Request (:arrow_right_hook:)</a>
 
 Stat requests are sent from the client to the server to request metadata about a URI.
@@ -277,13 +322,16 @@ export interface StatParams {
 ```
 
 _Response:_
-- result: `FileStatResponse` | [`FileSystemError`](#fileSystemError)
+- result: `FileStatResponse`
+- error: code and message set in case an exception during the `fileSystem/stat` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
 ```typescript
 export interface FileStatResponse {
     /**
      * The type of the file, e.g. is a regular file, a directory, or symbolic link
      * to a file/directory.
+     * 
+     * *Note:* This value might be a bitmask, e.g. `FileType.File | FileType.SymbolicLink`.
      */
     type: FileType;
 
@@ -355,6 +403,8 @@ export interface DirectoryChild {
 
     /**
      * The type of the file, e.g. is a regular file, a directory, or symbolic link to a file/directory.
+     * 
+     * *Note:* This value might be a bitmask, e.g. `FileType.File | FileType.SymbolicLink`.
      */
     type: FileType;
 }
@@ -411,12 +461,13 @@ export interface ReadFileParams {
 ```
 
 _Response:_
-- result: `ReadFileResponse` | [`FileSystemError`](#fileSystemError)
+- result: `ReadFileResponse`
+- error: code and message set in case an exception during the `fileSystem/readFile` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
 ```typescript
 export interface ReadFileResponse {
     /**
-     * The entire contents of the file.
+     * The entire contents of the file `base64` encoded.
      */
     content: string;
 }
@@ -442,7 +493,7 @@ export interface WriteFileParams {
     uri: URI;
 
     /**
-     * The new content of the file.
+     * The new content of the file `base64` encoded.
      */
     content: string;
 
@@ -466,12 +517,8 @@ export interface WriteFileOptions {
 ```
 
 _Response:_
-- result: `WriteFileResponse`
-
-```typescript
-export interface WriteFileResponse extends FileSystemResult {
-}
-```
+- result: void
+- error: code and message set in case an exception during the `fileSystem/writeFile` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
 #### <a href="#delete" name="delete" class="anchor">Delete Request (:arrow_right_hook:)</a>
 
@@ -507,12 +554,8 @@ export interface DeleteFileOptions {
 ```
 
 _Response:_
-- result: `DeleteResponse`
-
-```typescript
-export interface DeleteResponse extends FileSystemResult {
-}
-```
+- result: void
+- error: code and message set in case an exception during the `fileSystem/delete` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
 #### <a href="#rename" name="rename" class="anchor">Rename Request (:arrow_right_hook:)</a>
 
@@ -536,7 +579,7 @@ export interface RenameFileParams {
     /**
      * The new location.
      */
-    oldUri: URI;
+    newUri: URI;
 
     /**
      * Defines if existing files should be overwritten.
@@ -553,9 +596,5 @@ export interface RenameFileOptions {
 ```
 
 _Response:_
-- result: `RenameFileResponse`
-
-```typescript
-export interface RenameFileResponse extends FileSystemResult {
-}
-```
+- result: void
+- error: code and message set in case an exception during the `fileSystem/rename` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
