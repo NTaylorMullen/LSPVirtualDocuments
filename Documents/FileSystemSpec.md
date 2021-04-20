@@ -225,7 +225,7 @@ export namespace FileChangeType {
 }
 ```
 
-#### <a href="#watch" name="watch" class="anchor">Watch Request (:arrow_right_hook:)</a>
+#### <a href="#watch" name="watch" class="anchor">Watch Notification (:arrow_right:)</a>
 
 Watch requests are sent from the client to the server to subscribe to [DidChangeFile](#didChangeFile) events in the file or folder denoted by `uri`.
 
