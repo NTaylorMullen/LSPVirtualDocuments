@@ -233,10 +233,9 @@ _Client Capabilities:_ See general file system provider [client capabilities](#f
 
 _Server Capabilities:_ See general file system provider [server capabilities](#fileSystemProviderServerCapabilities)
 
-_Request:_
+_Notification:_
 - method: `fileSystem/watch`
 - params: `WatchParams` defined as follows:
-
 
 ```typescript
 export interface WatchParams {
@@ -244,6 +243,11 @@ export interface WatchParams {
      * The uri of the file or folder to be watched.
      */
     uri: URI;
+    
+    /**
+     * The subscription ID to be used in order to stop watching the provided file or folder uri via the [StopWatching](#stopWatching) notification.
+     */
+    subscriptionId: string;
 
     /**
      * Configures the watch
@@ -261,18 +265,6 @@ export interface WatchFileOptions {
      * Folders or files to exclude from being watched.
      */
     excludes: string[];
-}
-```
-
-_Response:_
-- result: `WatchResponse`
-
-```typescript
-export interface WatchResponse {
-    /**
-     * The subscription ID to be used in order to stop watching a file or folder via the [StopWatching](#stopWatching) notification.
-     */
-    subscriptionId: number;
 }
 ```
 
