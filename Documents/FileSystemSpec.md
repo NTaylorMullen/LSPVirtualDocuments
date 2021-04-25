@@ -288,7 +288,7 @@ export interface StopWatchingParams {
     /**
      * The subscription id.
      */
-    subscriptionId: number;
+    subscriptionId: string;
 }
 ```
 
@@ -302,10 +302,10 @@ _Server Capabilities:_ See general file system provider [server capabilities](#f
 
 _Request:_
 - method: `fileSystem/stat`
-- params: `StatParams` defined as follows:
+- params: `FileStatParams` defined as follows:
 
 ```typescript
-export interface StatParams {
+export interface FileStatParams {
     /**
      * The uri to retrieve metadata about.
      */
