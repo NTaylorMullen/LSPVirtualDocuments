@@ -424,12 +424,8 @@ export interface CreateDirectoryParams {
 ```
 
 _Response:_
-- result: `CreateDirectoryResponse`
-
-```typescript
-export interface CreateDirectoryResponse extends FileSystemResult {
-}
-```
+- result: void
+- error: code and message set in case an exception during the `fileSystem/createDirectory` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
 #### <a href="#readFile" name="readFile" class="anchor">ReadFile Request (:arrow_right_hook:)</a>
 
