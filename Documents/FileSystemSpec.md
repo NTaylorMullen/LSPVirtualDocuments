@@ -252,10 +252,10 @@ export interface WatchParams {
     /**
      * Configures the watch
      */
-    options: WatchFileOptions
+    options: WatchOptions
 }
 
-export interface WatchFileOptions {
+export interface WatchOptions {
     /**
      * If a folder should be recursively subscribed to
      */
