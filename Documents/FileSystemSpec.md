@@ -521,7 +521,7 @@ _Request:_
 - params: `DeleteFileParams` defined as follows:
 
 ```typescript
-export interface DeleteParams {
+export interface DeleteFileParams {
     /**
      * The uri of the file or folder to delete
      */
@@ -530,10 +530,10 @@ export interface DeleteParams {
     /**
      * Defines if deletion of folders is recursive.
      */
-    options: DeleteOptions
+    options: DeleteFileOptions
 }
 
-export interface DeleteOptions {
+export interface DeleteFileOptions {
     /**
      * If a folder should be recursively deleted.
      */
