@@ -141,12 +141,12 @@ export interface FileSystemProviderOptions {
     /**
      * Whether or not the file system is case sensitive.
      */
-    isCaseSensitive?: boolean;
+    caseSensitive?: boolean;
 
     /**
      * Whether or not the file system is readonly.
      */
-    isReadonly?: boolean
+    readonly?: boolean
 }
 ```
 
@@ -225,20 +225,20 @@ export namespace FileChangeType {
 }
 ```
 
-#### <a href="#watch" name="watch" class="anchor">Watch Notification (:arrow_right:)</a>
+#### <a href="#startWatching" name="startWatching" class="anchor">StartWatching Notification (:arrow_right:)</a>
 
-Watch requests are sent from the client to the server to subscribe to [DidChangeFile](#didChangeFile) events in the file or folder denoted by `uri`.
+Start watching notifications are sent from the client to the server to subscribe to [DidChangeFile](#didChangeFile) events in the file or folder denoted by `uri`.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
 _Server Capabilities:_ See general file system provider [server capabilities](#fileSystemProviderServerCapabilities)
 
 _Notification:_
-- method: `fileSystem/watch`
+- method: `fileSystem/startWatching`
 - params: `WatchParams` defined as follows:
 
 ```typescript
-export interface WatchParams {
+export interface StartWatchingParams {
     /**
      * The uri of the file or folder to be watched.
      */
@@ -270,7 +270,7 @@ export interface WatchFileOptions {
 
 #### <a href="#stopWatching" name="stopWatching" class="anchor">StopWatching Notification (:arrow_right:)</a>
 
-A notification sent from client to server to unsubscribe from a watched file or folder.
+Stop watching notifications are sent from client to server to unsubscribe from a watched file or folder.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -282,7 +282,7 @@ _Notification:_
 
 ```typescript
 /**
- * A notification to signal an unsubscribe from a corresponding [watch](#watch) request.
+ * A notification to signal an unsubscribe from a corresponding [start watching](#startWatching) request.
  */
 export interface StopWatchingParams {
     /**
