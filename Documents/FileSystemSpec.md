@@ -10,6 +10,11 @@ This document details a solution to creating virtual file systems in a platform 
         - [Basic Structures](#basicStructures)
         - [Capabilities](#capabilities)
         - [Requests and Notifications](#requestsAndNotifications)
+    - [Examples](#examples)
+        - [External file population](#populationExample)
+        - [Language service handling changes](#handlingChangesExample)
+        - [Getting content for dynamic files](#dynamicContentExample)
+        - [Embedded language feature interaction](#embeddedFeatureExample)
 
 # <a href="#problemBackground" name="problemBackground">Problem Background</a>
 
@@ -598,3 +603,33 @@ export interface RenameFileOptions {
 _Response:_
 - result: void
 - error: code and message set in case an exception during the `fileSystem/rename` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
+
+### <a href="#examples" name="examples">Examples</a>
+
+The following examples attempt to illustrate common interactions with a virtual file system
+
+#### <a href="#populationExample" name="populationExample" class="anchor">External file population</a>
+
+*Disclaimer: I'm not entirely sure this makes sense to populate a file system in an indirect way like this. Alternatively it'd probably make sense for the project system to have in-proc providers for various project systems and use the virtual file system as the standard representation for others to interact with.*
+
+Here's what it could look like if there were individual project system servers that populated the web project system. This example is of a Blazor project system spinning up. On incomplete project understanding the system recognizes files on disk and adds them to the web:// virtual file system. Once project references have been resolved a Razor class library includes static content which overrides site.css and adds a library.css file to the expected wwwwroot entries.
+
+![image](https://user-images.githubusercontent.com/2008729/154003595-2b50949a-9773-4127-8155-9d9d1c2cb3be.png)
+
+#### <a href="#handlingChangesExample" name="handlingChangesExample" class="anchor">Language service handling changes</a>
+
+This example assumes the file system has been populated as in the [previous example](#populationExample). On incomplete project understanding the system recognizes files on disk and adds them to the web:// virtual file system. Notifications for these changes are propagated to language services who then read their content to derive language services (i.e. css class completion). Once project references have been resolved a Razor class library includes static content which overrides site.css and adds a library.css file to the expected wwwwroot entries.
+
+![image](https://user-images.githubusercontent.com/2008729/154004455-ef15a8f2-0f7b-4fd8-9952-26c2fe0173e1.png)
+
+#### <a href="#dynamicContentExample" name="dynamicContentExample" class="anchor">Getting content for dynamic files</a>
+
+User goes to definition on a `System.Diagnostics.Debug` type. The type is represented in metadata and therefore doesn't exist on disk. Therefore because the C# language server indicated it can provide content for the `dynamic-csharp` URI scheme the client then asks the C# language server for the appropriate file content.
+
+![image](https://user-images.githubusercontent.com/2008729/154006408-85f16dfe-d829-4430-8ba1-b06afb9b8774.png)
+
+#### <a href="#embeddedFeatureExample" name="embeddedFeatureExample" class="anchor">Embedded language feature interaction</a>
+
+Here's an example in Razor (C# / HTML are sub-languages) where a user opens a file, types an `@` and then closes the file (`@` transitions into C#). It represents what happens for the C# embedded language (excludes the HTML embedded language for simplicity).
+
+![image](https://user-images.githubusercontent.com/2008729/154007241-2adc4cf7-cb2d-4bf2-bb47-407f272c56b7.png)
