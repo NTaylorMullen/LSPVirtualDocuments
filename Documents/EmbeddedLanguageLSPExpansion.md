@@ -220,7 +220,7 @@ When the host language (i.e. HTML, Razor etc.) changes it can "update" its corre
 
 Here's an example in Razor (C# / HTML are sub-languages) where a user opens a file, types an `@` and then closes the file (`@` transitions into C#). It represents what happens for the C# embedded language (excludes the HTML  embedded language for simplicity).
 
-![image](https://user-images.githubusercontent.com/2008729/113519756-2b7ea680-9543-11eb-841b-ab4c48d88f6a.png)
+![image](https://user-images.githubusercontent.com/2008729/154007006-1ed9ed83-9bdb-4060-b095-af05c9e358d6.png)
 
 **Important:** For all the details on virtual document state management check out the [full spec](#spec_VirtualTextDocumentStateManagement) below. 
 
