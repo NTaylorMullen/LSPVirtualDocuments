@@ -120,6 +120,10 @@ export namespace FileSystemErrorType {
  * Client capabilities specific to file system providers
  */
 export interface FileSystemProviderClientCapabilities {
+    /**
+     * Whether or not the file system features are queryable.
+     */
+    queryable?: boolean;
 }
 ```
 
@@ -159,9 +163,9 @@ export interface FileSystemProviderRegistrationOptions extends FileSystemProvide
 
 ### <a href="#requestsAndNotifications" name="requestsAndNotifications">Requests and Notifications</a>
 
-#### <a href="#didChangeFile" name="didChangeFile" class="anchor">DidChangeFile Notification (:arrow_left:)</a>
+#### <a href="#didChangeFile" name="didChangeFile" class="anchor">DidChangeFile Notification (:arrow_left: or :arrow_right:)</a>
 
-Change file notifications are sent from the server to the client to signal the change of the registered file system provider.
+Change file notifications are sent from the server to the client or client to server to signal the change of the registered file system provider.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -225,9 +229,9 @@ export namespace FileChangeType {
 }
 ```
 
-#### <a href="#startWatching" name="startWatching" class="anchor">StartWatching Notification (:arrow_right:)</a>
+#### <a href="#startWatching" name="startWatching" class="anchor">StartWatching Notification (:arrow_right: or :arrow_left:)</a>
 
-Start watching notifications are sent from the client to the server to subscribe to [DidChangeFile](#didChangeFile) events in the file or folder denoted by `uri`.
+Start watching notifications are sent from the client to the server or server to client to subscribe to [DidChangeFile](#didChangeFile) events in the file or folder denoted by `uri`.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -268,9 +272,9 @@ export interface WatchFileOptions {
 }
 ```
 
-#### <a href="#stopWatching" name="stopWatching" class="anchor">StopWatching Notification (:arrow_right:)</a>
+#### <a href="#stopWatching" name="stopWatching" class="anchor">StopWatching Notification (:arrow_right: or :arrow_left:)</a>
 
-Stop watching notifications are sent from client to server to unsubscribe from a watched file or folder.
+Stop watching notifications are sent from client to server or server to client to unsubscribe from a watched file or folder.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -292,9 +296,9 @@ export interface StopWatchingParams {
 }
 ```
 
-#### <a href="#stat" name="stat" class="anchor">Stat Request (:arrow_right_hook:)</a>
+#### <a href="#stat" name="stat" class="anchor">Stat Request (:leftwards_arrow_with_hook: or :arrow_right_hook:)</a>
 
-Stat requests are sent from the client to the server to request metadata about a URI.
+Stat requests are sent from the client to the server or server to client to request metadata about a URI.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -352,9 +356,9 @@ export interface FileStatResponse {
 }
 ```
 
-#### <a href="#readDirectory" name="readDirectory" class="anchor">ReadDirectory Request (:arrow_right_hook:)</a>
+#### <a href="#readDirectory" name="readDirectory" class="anchor">ReadDirectory Request (:leftwards_arrow_with_hook: or :arrow_right_hook:)</a>
 
-Read directory requests are sent from the client to the server to retrieve all entries of a directory.
+Read directory requests are sent from the client to the server or server to client to retrieve all entries of a directory.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -402,9 +406,11 @@ export interface DirectoryChild {
 }
 ```
 
-#### <a href="#createDirectory" name="createDirectory" class="anchor">CreateDirectory Request (:arrow_right_hook:)</a>
+#### <a href="#createDirectory" name="createDirectory" class="anchor">CreateDirectory Request (:leftwards_arrow_with_hook:)</a>
 
 Create directory requests are sent from the client to the server to create a new directory.
+
+*Note: If a server wants to request a directory be created it can do so via [`workspace/applyEdit`](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit) requests. This request does not respect the `queryable` client capability property.*
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -427,9 +433,9 @@ _Response:_
 - result: void
 - error: code and message set in case an exception during the `fileSystem/createDirectory` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
-#### <a href="#readFile" name="readFile" class="anchor">ReadFile Request (:arrow_right_hook:)</a>
+#### <a href="#readFile" name="readFile" class="anchor">ReadFile Request (:leftwards_arrow_with_hook: or :arrow_right_hook:)</a>
 
-Read file requests are sent from the client to the server to retrieve the content of a file.
+Read file requests are sent from the client to the server or server to client to retrieve the content of a file.
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -461,9 +467,11 @@ export interface ReadFileResponse {
 }
 ```
 
-#### <a href="#writeFile" name="writeFile" class="anchor">WriteFile Request (:arrow_right_hook:)</a>
+#### <a href="#writeFile" name="writeFile" class="anchor">WriteFile Request (:leftwards_arrow_with_hook:)</a>
 
-Write file requests are sent from the client to the server to write data to a file, replacing its entire contents.
+Write file requests are sent from the client to the server or from server to client to write data to a file, replacing its entire contents.
+
+*Note: If a server wants to request a file be created it can do so via [`workspace/applyEdit`](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit) requests. This request does not respect the `queryable` client capability property.*
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -508,9 +516,11 @@ _Response:_
 - result: void
 - error: code and message set in case an exception during the `fileSystem/writeFile` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
-#### <a href="#delete" name="delete" class="anchor">Delete Request (:arrow_right_hook:)</a>
+#### <a href="#delete" name="delete" class="anchor">Delete Request (:leftwards_arrow_with_hook:)</a>
 
 Delete requests are sent from the client to the server to delete a file or folder.
+
+*Note: If a server wants to request a file or folder be deleted it can do so via [`workspace/applyEdit`](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit) requests. This request does not respect the `queryable` client capability property.*
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
@@ -545,9 +555,11 @@ _Response:_
 - result: void
 - error: code and message set in case an exception during the `fileSystem/delete` request. Code will be of type [FileSystemErrorType](#fileSystemErrorType) with an associated message.
 
-#### <a href="#rename" name="rename" class="anchor">Rename Request (:arrow_right_hook:)</a>
+#### <a href="#rename" name="rename" class="anchor">Rename Request (:leftwards_arrow_with_hook:)</a>
 
 Rename requests are sent from the client to the server to rename a file or folder.
+
+*Note: If a server wants to request a file or folder be renamed it can do so via [`workspace/applyEdit`](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit) requests. This request does not respect the `queryable` client capability property.*
 
 _Client Capabilities:_ See general file system provider [client capabilities](#fileSystemProviderClientCapabilities)
 
